@@ -274,6 +274,26 @@ public final class CapturingEmitter implements RecordEmitter {
   @Override public void emitDlq(String dlqTopic, Map<String,String> h, byte[] original, String errorClass, String errorMsg){ dlq.add(new Rec(dlqTopic,h,null,original)); }
 }
 JAVA
+cat <<'JAVA' > "$ROOT/src/main/java/com/kosmiceye/s3source/testutil/Assert.java"
+package com.kosmiceye.s3source.testutil;
+public final class Assert {
+  private Assert(){}
+  public static void check(boolean condition, String message){
+    if(!condition) throw new IllegalStateException(message);
+  }
+  public static void equals(Object expected, Object actual, String message){
+    if(expected==null ? actual!=null : !expected.equals(actual)){
+      throw new IllegalStateException(message + " expected=" + expected + " actual=" + actual);
+    }
+  }
+  public static void equals(Object expected, Object actual){
+    equals(expected, actual, "Values differ");
+  }
+  public static void notNull(Object value, String message){
+    if(value==null) throw new IllegalStateException(message);
+  }
+}
+JAVA
 cat <<'JAVA' > "$ROOT/src/main/java/com/kosmiceye/s3source/testutil/SimpleClock.java"
 package com.kosmiceye.s3source.testutil;
 import com.kosmiceye.s3source.spi.Clock;
@@ -368,10 +388,10 @@ public final class SmokeTestMain {
     var engine = new SourceEngine(cfg, store, offsets, emitter, planner, clock);
     int total=0;
     for(int i=0;i<10;i++){ total += engine.pollOnce(); }
-    if(emitter.out.size()!=2) throw new RuntimeException("expected 2 got "+emitter.out.size());
+    Assert.check(emitter.out.size()==2, "expected 2 got " + emitter.out.size());
     var s0 = new String(emitter.out.get(0).value(), StandardCharsets.UTF_8).trim();
     var s1 = new String(emitter.out.get(1).value(), StandardCharsets.UTF_8).trim();
-    if(!s0.startsWith("{") || !s1.startsWith("{")) throw new RuntimeException("not json lines");
+    Assert.check(s0.startsWith("{") && s1.startsWith("{"), "not json lines");
     System.out.println("OK " + emitter.out.size());
   }
 }
